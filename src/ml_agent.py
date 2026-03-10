@@ -15,6 +15,7 @@ class QLearningAgent:
         self.epsilon = epsilon
         
         # Q-Table : Lignes = États de stagnation (0 à 20), Colonnes = Actions
+        # On limite la stagnation vue par l'IA à 20 (si >20, on considère que c'est pareil)
         self.n_states = 21 
         self.n_actions = len(actions)
         self.q_table = np.zeros((self.n_states, self.n_actions))
@@ -27,14 +28,32 @@ class QLearningAgent:
         return min(stagnation_counter, self.n_states - 1)
 
     def choose_action(self, stagnation_counter):
-        self.last_state = self.get_state_index(stagnation_counter)
-        # Pour le moment, on renvoie toujours la première action par défaut
-        self.last_action_idx = 0
-        return self.actions[self.last_action_idx]
+        """Choisit une action selon la stratégie Epsilon-Greedy."""
+        state = self.get_state_index(stagnation_counter)
+        self.last_state = state
+
+        # Exploration : Parfois on teste au hasard
+        if np.random.uniform(0, 1) < self.epsilon:
+            action_idx = np.random.choice(self.n_actions)
+        # Exploitation : Sinon on prend la meilleure action connue
+        else:
+            action_idx = np.argmax(self.q_table[state])
+        
+        self.last_action_idx = action_idx
+        return self.actions[action_idx]
 
     def learn(self, current_stagnation, reward):
-        # Implémenter la mise à jour des valeurs Q avec l'équation de Bellman
-        pass
+        """Met à jour la Q-Table avec l'équation de Bellman."""
+        next_state = self.get_state_index(current_stagnation)
+        
+        # Valeur actuelle
+        current_q = self.q_table[self.last_state, self.last_action_idx]
+        
+        # Valeur cible (Reward + meilleure valeur future)
+        max_future_q = np.max(self.q_table[next_state])
+        new_q = current_q + self.lr * (reward + self.gamma * max_future_q - current_q)
+        
+        self.q_table[self.last_state, self.last_action_idx] = new_q
 
     def save_brain(self, filename="q_table.npy"):
         np.save(filename, self.q_table)
